@@ -6,21 +6,21 @@ from pathlib import Path
 
 
 def build_frontend():
-    print("▶ Building Vue frontend...")
+    print("[*] Building Vue frontend...")
     subprocess.run(["npm", "run", "build"], cwd=Path(__file__).parent / "frontend", check=True)
-    print("✓ Frontend built.")
+    print("[OK] Frontend built.")
 
 
 def build_exe():
-    print("▶ Running PyInstaller...")
+    print("[*] Running PyInstaller...")
     subprocess.run(
         [sys.executable, "-m", "PyInstaller", "build.spec", "--clean"],
         check=True,
     )
-    print("✓ Executable built in dist/SalesAggregator/")
+    print("[OK] Executable built in dist/SalesAggregator/")
 
 
 if __name__ == "__main__":
     build_frontend()
     build_exe()
-    print("\n🎉 Build complete: dist/SalesAggregator/SalesAggregator.exe")
+    print("\nBuild complete: dist/SalesAggregator/SalesAggregator.exe")
