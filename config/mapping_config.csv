@@ -1,0 +1,5 @@
+date,日付,Date,transaction_date,売上日
+amount,金額,Amount,売上金額,revenue,売上
+client,取引先,Client,顧客名,customer
+product_code,商品コード,ProductCode,item_code
+quantity,数量,Quantity,個数,qty
