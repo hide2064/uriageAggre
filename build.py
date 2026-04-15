@@ -7,7 +7,7 @@ from pathlib import Path
 
 def build_frontend():
     print("[*] Building Vue frontend...")
-    subprocess.run(["npm", "run", "build"], cwd=Path(__file__).parent / "frontend", check=True)
+    subprocess.run("npm run build", cwd=Path(__file__).parent / "frontend", check=True, shell=True)
     print("[OK] Frontend built.")
 
 
