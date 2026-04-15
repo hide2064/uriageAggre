@@ -121,6 +121,12 @@ def process_files(
             if key_col == canonical or key_col in aliases:
                 resolved_key_col = canonical
                 break
+        else:
+            # for-else: loop completed without break → key_col not in mapping
+            errors.append({
+                "file": "__config__",
+                "error": f"key_col '{key_col}' not found in header_mapping; enrichment column will be all N/A",
+            })
 
     for file_path in file_paths:
         try:

@@ -119,6 +119,10 @@ class TestProcessFiles:
         assert "client" in df.columns
         assert new_col in df.columns
         assert len(df) == 3
+        # Verify actual enriched values (proves canonical key resolution round-trip worked)
+        cat_values = set(df[new_col].tolist())
+        assert "電化製品" in cat_values
+        assert "食品" in cat_values
 
     def test_unknown_keys_become_na(
         self, sample_csv, sample_mapping_config, sample_value_mapping_config
@@ -150,3 +154,9 @@ class TestProcessFiles:
         df, errors = process_files([str(f1), str(f2)], hm)
         assert len(df) == 3
         assert errors == []
+
+    def test_all_files_fail_returns_empty_df(self, sample_mapping_config):
+        hm = load_header_mapping(sample_mapping_config)
+        df, errors = process_files(["/bad1.csv", "/bad2.csv"], hm)
+        assert df.empty
+        assert len(errors) == 2
