@@ -1,6 +1,9 @@
 import pytest
 import pandas as pd
-from backend.processor import normalize_headers, enrich_data
+from backend.processor import (
+    normalize_headers, enrich_data,
+    load_header_mapping, load_value_mapping, process_files,
+)
 
 
 class TestNormalizeHeaders:
@@ -63,3 +66,87 @@ class TestEnrichData:
         original_cols = list(df.columns)
         enrich_data(df, {"A001": "電化製品"}, "product_code", "category")
         assert list(df.columns) == original_cols
+
+
+class TestLoadHeaderMapping:
+    def test_loads_canonical_with_aliases(self, sample_mapping_config):
+        mapping = load_header_mapping(sample_mapping_config)
+        assert "amount" in mapping
+        assert "売上金額" in mapping["amount"]
+        assert "Amount" in mapping["amount"]
+
+    def test_handles_utf8_bom(self, tmp_path):
+        config = tmp_path / "mapping.csv"
+        config.write_bytes(
+            b"\xef\xbb\xbf" + "amount,売上金額,Amount\n".encode("utf-8")
+        )
+        mapping = load_header_mapping(str(config))
+        assert "amount" in mapping
+
+    def test_strips_whitespace_from_aliases(self, tmp_path):
+        config = tmp_path / "m.csv"
+        config.write_text("amount, 売上金額 , Amount \n", encoding="utf-8")
+        mapping = load_header_mapping(str(config))
+        assert "売上金額" in mapping["amount"]
+
+
+class TestLoadValueMapping:
+    def test_returns_key_col_new_col_and_data(self, sample_value_mapping_config):
+        key_col, new_col, mapping = load_value_mapping(sample_value_mapping_config)
+        assert key_col == "商品コード"
+        assert new_col == "カテゴリ"
+        assert mapping["A001"] == "電化製品"
+        assert mapping["B001"] == "食品"
+
+    def test_header_only_file_returns_empty_mapping(self, tmp_path):
+        config = tmp_path / "empty.csv"
+        config.write_text("キー,値\n", encoding="utf-8")
+        key_col, new_col, mapping = load_value_mapping(str(config))
+        assert key_col == "キー"
+        assert new_col == "値"
+        assert mapping == {}
+
+
+class TestProcessFiles:
+    def test_normalizes_headers_and_enriches(
+        self, sample_csv, sample_mapping_config, sample_value_mapping_config
+    ):
+        hm = load_header_mapping(sample_mapping_config)
+        key_col, new_col, vm = load_value_mapping(sample_value_mapping_config)
+        df, errors = process_files([sample_csv], hm, vm, key_col, new_col)
+        assert errors == []
+        assert "amount" in df.columns
+        assert "client" in df.columns
+        assert new_col in df.columns
+        assert len(df) == 3
+
+    def test_unknown_keys_become_na(
+        self, sample_csv, sample_mapping_config, sample_value_mapping_config
+    ):
+        hm = load_header_mapping(sample_mapping_config)
+        key_col, new_col, vm = load_value_mapping(sample_value_mapping_config)
+        df, errors = process_files([sample_csv], hm, vm, key_col, new_col)
+        # X999 not in mapping → N/A
+        assert df[new_col].eq("N/A").sum() == 1
+
+    def test_adds_source_file_column(self, sample_csv, sample_mapping_config):
+        hm = load_header_mapping(sample_mapping_config)
+        df, errors = process_files([sample_csv], hm)
+        assert "_source_file" in df.columns
+
+    def test_collects_errors_for_bad_files(self, sample_mapping_config):
+        hm = load_header_mapping(sample_mapping_config)
+        df, errors = process_files(["/nonexistent/file.csv"], hm)
+        assert len(errors) == 1
+        assert "file" in errors[0]
+        assert "error" in errors[0]
+
+    def test_combines_multiple_files(self, tmp_path, sample_mapping_config):
+        f1 = tmp_path / "f1.csv"
+        f2 = tmp_path / "f2.csv"
+        f1.write_text("売上金額\n100\n200\n", encoding="utf-8")
+        f2.write_text("売上金額\n300\n", encoding="utf-8")
+        hm = load_header_mapping(sample_mapping_config)
+        df, errors = process_files([str(f1), str(f2)], hm)
+        assert len(df) == 3
+        assert errors == []
