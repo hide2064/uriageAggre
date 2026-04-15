@@ -90,3 +90,8 @@ def test_export_endpoint(client):
     res = client.post("/api/export")
     assert res.status_code == 200
     assert res.json()["success"] is True
+
+
+def test_put_config_rejects_missing_content(client):
+    res = client.put("/api/config/mapping", json={})
+    assert res.status_code == 422  # Pydantic validation error

@@ -11,12 +11,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from pydantic import BaseModel
+
 from backend.database import export_to_excel, get_records, get_summary, save_dataframe
 from backend.processor import (
     load_header_mapping,
     load_value_mapping,
     process_files,
 )
+
+
+class ConfigUpdateBody(BaseModel):
+    content: str
+
 
 app = FastAPI(title="Sales Data Aggregator")
 
@@ -68,7 +75,8 @@ async def api_import(files: List[UploadFile] = File(...)):
     with tempfile.TemporaryDirectory() as tmpdir:
         saved: List[str] = []
         for upload in files:
-            dest = Path(tmpdir) / (upload.filename or "file")
+            safe_name = Path(upload.filename or "file").name or "file"
+            dest = Path(tmpdir) / safe_name
             dest.write_bytes(await upload.read())
             saved.append(str(dest))
 
@@ -108,11 +116,11 @@ def api_get_config(config_type: str):
 
 
 @app.put("/api/config/{config_type}")
-def api_put_config(config_type: str, body: dict):
+def api_put_config(config_type: str, body: ConfigUpdateBody):
     if config_type not in ("mapping", "value_mapping"):
         raise HTTPException(status_code=404, detail="Unknown config type")
     path = _config_dir() / f"{config_type}_config.csv"
-    path.write_text(body.get("content", ""), encoding="utf-8")
+    path.write_text(body.content, encoding="utf-8")
     return {"success": True}
 
 
@@ -121,9 +129,9 @@ def api_export():
     output_path = str(_export_dir() / "export.xlsx")
     try:
         export_to_excel(output_path)
-        return {"success": True, "path": output_path}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        return {"success": True, "download_url": "/api/export/download"}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Export failed. Check that data has been imported first.")
 
 
 @app.get("/api/export/download")
