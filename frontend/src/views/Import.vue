@@ -88,25 +88,39 @@
 </template>
 
 <script setup>
+/**
+ * Import.vue — ファイルインポート画面
+ * ======================================
+ * ドラッグ＆ドロップまたはクリックでファイルを選択し、
+ * POST /api/import でバックエンドの ETL パイプラインに送信する。
+ *
+ * 対応ファイル形式: .csv, .txt, .tsv, .xlsx, .xls
+ */
 import { ref } from 'vue'
 import { importFiles } from '../api/index.js'
 
-const fileInput = ref(null)
-const selectedFiles = ref([])
-const isDragging = ref(false)
-const importing = ref(false)
-const result = ref(null)
-const error = ref(null)
+const fileInput    = ref(null)   // <input type="file"> への参照
+const selectedFiles = ref([])    // 選択済みファイルの配列 (File オブジェクト)
+const isDragging   = ref(false)  // ドラッグオーバー中フラグ (ドロップゾーンのスタイル切替)
+const importing    = ref(false)  // インポート処理中フラグ (ボタン無効化)
+const result       = ref(null)   // インポート結果 ({success, record_count, errors})
+const error        = ref(null)   // 予期しないエラーメッセージ
 
+/**
+ * ファイルサイズを人間が読みやすい形式に変換する。
+ * 例: 1536 → "1.5 KB"
+ */
 const fmtSize = (b) => b < 1024 ? `${b} B`
   : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB`
   : `${(b / (1024 * 1024)).toFixed(1)} MB`
 
+/** <input type="file"> の change イベントハンドラ */
 const onFileSelect = (e) => {
   selectedFiles.value = Array.from(e.target.files)
-  result.value = error.value = null
+  result.value = error.value = null  // 前回の結果をクリア
 }
 
+/** ドロップイベントハンドラ: 対応拡張子のファイルのみ受け付ける */
 const onDrop = (e) => {
   isDragging.value = false
   selectedFiles.value = Array.from(e.dataTransfer.files).filter(
@@ -115,14 +129,16 @@ const onDrop = (e) => {
   result.value = error.value = null
 }
 
+/** インポートボタンのクリックハンドラ */
 const doImport = async () => {
   importing.value = true
   result.value = error.value = null
   try {
     const res = await importFiles(selectedFiles.value)
-    result.value = res.data
-    selectedFiles.value = []
+    result.value = res.data           // {success: true, record_count: N, errors: [...]}
+    selectedFiles.value = []          // インポート成功後にファイルリストをクリア
   } catch (e) {
+    // HTTP 400 の場合は detail.message を表示、それ以外はメッセージをそのまま表示
     error.value = e.response?.data?.detail?.message || e.message || 'インポートエラー'
   } finally {
     importing.value = false

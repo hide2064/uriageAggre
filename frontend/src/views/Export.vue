@@ -51,20 +51,31 @@
 </template>
 
 <script setup>
+/**
+ * Export.vue — Excel エクスポート画面
+ * ======================================
+ * 1. GET /api/summary でレコード数を確認する
+ * 2. POST /api/export で Excel ファイルを生成する
+ * 3. GET /api/export/download でファイルをダウンロードする
+ *
+ * ダウンロードは window.open() で新しいタブを開く方式を採用する。
+ * これにより pywebview のネイティブダウンロードダイアログが起動する。
+ */
 import { ref, onMounted } from 'vue'
 import { getSummary, triggerExport, downloadExport } from '../api/index.js'
 
-const summary    = ref({ record_count: 0 })
-const exporting  = ref(false)
-const exportDone = ref(false)
-const statusMsg  = ref(null)
-const statusOk   = ref(true)
+const summary    = ref({ record_count: 0 })  // ダッシュボードサマリー (レコード数の表示用)
+const exporting  = ref(false)                 // Excel 生成処理中フラグ
+const exportDone = ref(false)                 // 生成完了フラグ (ダウンロードボタンの表示制御)
+const statusMsg  = ref(null)                  // ステータスメッセージ
+const statusOk   = ref(true)                  // true: 成功 (緑), false: 失敗 (赤)
 
+/** 「Excelファイルを生成」ボタンのクリックハンドラ */
 const doExport = async () => {
   exporting.value = true
   statusMsg.value = null
   try {
-    await triggerExport()
+    await triggerExport()  // POST /api/export → exports/export.xlsx を生成
     exportDone.value = true
     statusOk.value   = true
     statusMsg.value  = 'ファイルを生成しました。ダウンロードボタンを押してください。'
@@ -76,6 +87,7 @@ const doExport = async () => {
   }
 }
 
+/** コンポーネントマウント時にサマリーを取得してレコード数を表示する */
 onMounted(async () => {
   try { summary.value = (await getSummary()).data } catch (_) {}
 })
