@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -26,7 +26,7 @@ class ImportLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     files = Column(Text, nullable=False)        # JSON list of filenames
     record_count = Column(Integer, nullable=False)
-    imported_at = Column(DateTime, default=datetime.utcnow)
+    imported_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 def save_dataframe(df: pd.DataFrame, source_files: List[str]) -> int:
@@ -43,7 +43,7 @@ def save_dataframe(df: pd.DataFrame, source_files: List[str]) -> int:
             ImportLog(
                 files=json.dumps(source_files, ensure_ascii=False),
                 record_count=len(df),
-                imported_at=datetime.utcnow(),
+                imported_at=datetime.now(timezone.utc),
             )
         )
         session.commit()
@@ -87,6 +87,10 @@ def get_summary() -> Dict[str, Any]:
 
 def get_records(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
     """Return paginated records from sales_records table."""
+    if not isinstance(page, int) or not isinstance(page_size, int):
+        raise TypeError("page and page_size must be integers")
+    if page < 1 or page_size < 1:
+        raise ValueError("page and page_size must be positive integers")
     engine = _make_engine()
     try:
         total = int(
@@ -104,8 +108,11 @@ def get_records(page: int = 1, page_size: int = 100) -> Dict[str, Any]:
             "page": page,
             "page_size": page_size,
         }
-    except Exception:
-        return {"data": [], "total": 0, "page": page, "page_size": page_size}
+    except Exception as exc:
+        # Only suppress "table does not exist" errors (e.g. before first import)
+        if "no such table" in str(exc).lower():
+            return {"data": [], "total": 0, "page": page, "page_size": page_size}
+        raise
 
 
 def export_to_excel(output_path: str) -> str:
