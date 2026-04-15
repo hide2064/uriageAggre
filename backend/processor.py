@@ -33,6 +33,7 @@ def enrich_data(
     """Add new_col by looking up key_col values in value_mapping.
 
     Missing keys -> 'N/A'. Missing key_col -> all 'N/A'.
+    Key column values are coerced to str before lookup; value_mapping keys must be strings.
     """
     df = df.copy()
     if key_col not in df.columns:

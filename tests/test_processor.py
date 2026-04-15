@@ -30,7 +30,7 @@ class TestNormalizeHeaders:
         df = pd.DataFrame({" 売上金額 ": [100]})
         mapping = {"amount": ["売上金額"]}
         result = normalize_headers(df, mapping)
-        assert "amount" in result.columns
+        assert list(result.columns) == ["amount"]
 
     def test_does_not_mutate_input(self):
         df = pd.DataFrame({"売上金額": [1]})
