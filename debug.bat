@@ -1,34 +1,25 @@
 @echo off
-REM ============================================================
-REM  debug.bat — 開発環境起動スクリプト
-REM ============================================================
-REM  バックエンド (FastAPI) と フロントエンド (Vite dev server) を
-REM  それぞれ別ウィンドウで起動します。
+REM debug.bat - Development mode launcher
+REM Opens two windows: FastAPI backend (reload) + Vite dev server
 REM
-REM  アクセス先:
-REM    http://localhost:5173   ← Vite dev server (推奨)
-REM    http://127.0.0.1:8765  ← FastAPI 直接
-REM
-REM  停止方法: 各ウィンドウで Ctrl+C を押してください。
-REM ============================================================
+REM Access:
+REM   http://localhost:5173   <- Vite dev server (recommended)
+REM   http://127.0.0.1:8765  <- FastAPI direct
 
-echo [debug.bat] 開発サーバーを起動しています...
+echo [debug.bat] Starting development servers...
 
-REM ── バックエンド (FastAPI + uvicorn --reload) ──────────────
-REM   --reload: ファイル変更を検知して自動再起動
-REM   --port 8765: Vue の vite.config.js プロキシ先に合わせる
+REM Backend: FastAPI with auto-reload on file changes
 start "FastAPI Backend" cmd /k "uvicorn backend.main:app --reload --port 8765"
 
-REM 少し待ってからフロントエンドを起動（ポートバインド待ち）
+REM Wait for backend to bind the port
 timeout /t 2 /nobreak > nul
 
-REM ── フロントエンド (Vite dev server) ──────────────────────
-REM   Vite の /api プロキシが自動的に :8765 へ転送する
+REM Frontend: Vite dev server (proxies /api -> :8765)
 start "Vite Frontend" cmd /k "cd frontend && npm run dev"
 
 echo.
-echo [debug.bat] 起動完了。
-echo   バックエンド: http://127.0.0.1:8765
-echo   フロントエンド: http://localhost:5173
+echo [debug.bat] Servers started.
+echo   Backend:  http://127.0.0.1:8765
+echo   Frontend: http://localhost:5173
 echo.
-echo 各ウィンドウで Ctrl+C を押すと停止します。
+echo Press Ctrl+C in each window to stop.

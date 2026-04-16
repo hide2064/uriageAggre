@@ -1,49 +1,24 @@
 @echo off
-REM ============================================================
-REM  commit.bat — git commit & push スクリプト
-REM ============================================================
-REM  使い方:
-REM    commit.bat "コミットメッセージ"
-REM
-REM  引数なしで実行した場合は自動タイムスタンプのメッセージを使います。
-REM ============================================================
+REM commit.bat - Git add, commit, and push
+REM Usage: commit.bat "commit message"
+REM        (no argument = auto timestamp message)
 
-REM メッセージが引数で渡された場合はそれを使用
 set MSG=%~1
 if "%MSG%"=="" (
-    REM 引数なし → 現在日時をメッセージに使用
-    for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DATE=%%a-%%b-%%c
-    for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TIME=%%a:%%b
-    set MSG=chore: save progress %DATE% %TIME%
+    for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set DSTR=%%a-%%b-%%c
+    for /f "tokens=1-2 delims=: " %%a in ('time /t') do set TSTR=%%a:%%b
+    set MSG=chore: save progress %DSTR% %TSTR%
 )
 
-echo [commit.bat] コミット & プッシュを実行します...
-echo メッセージ: %MSG%
-echo.
+echo [commit.bat] Committing: %MSG%
 
-REM ── ステージング ────────────────────────────────────────────
 git add -A
-if errorlevel 1 (
-    echo [ERROR] git add に失敗しました。
-    pause
-    exit /b 1
-)
+if errorlevel 1 ( echo [ERROR] git add failed. & pause & exit /b 1 )
 
-REM ── コミット ────────────────────────────────────────────────
 git commit -m "%MSG%"
-if errorlevel 1 (
-    echo [INFO] コミットするものがないか、コミットに失敗しました。
-    pause
-    exit /b 0
-)
+if errorlevel 1 ( echo [INFO] Nothing to commit or commit failed. & pause & exit /b 0 )
 
-REM ── プッシュ ────────────────────────────────────────────────
 git push
-if errorlevel 1 (
-    echo [ERROR] プッシュに失敗しました。リモートの設定を確認してください。
-    pause
-    exit /b 1
-)
+if errorlevel 1 ( echo [ERROR] Push failed. & pause & exit /b 1 )
 
-echo.
-echo [commit.bat] 完了しました。
+echo [commit.bat] Done.
